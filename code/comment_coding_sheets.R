@@ -22,15 +22,7 @@ dbListTables(master_con)
 
 rules <- dbSendQuery(master_con, 'SELECT * FROM rules')
 
-###########
-<<<<<<< HEAD
-# Rdata
-# rules and proposed rules
-=======
-# Rdata
-# rules and proposed rules
 
->>>>>>> 337b296f99ef0d90f1b128611321f142d60f2a98
 load(here::here("data", "rules_metadata.Rdata"))
 rules %<>% as_tibble()
 names(rules)
@@ -207,28 +199,18 @@ d %<>%
 # filter to mass dockets
 d %<>% group_by(docket_id) %>%
   # mass dockets
-<<<<<<< HEAD
-  mutate(comments_on_docket = sum(number_of_comments_received),
-=======
   mutate(comments_on_docket = as.numeric(number_of_comments_received) %>% sum(),
->>>>>>> 337b296f99ef0d90f1b128611321f142d60f2a98
          max = max(number_of_comments_received) ) %>%
   ungroup() %>%
   filter(max > 99 | comments_on_docket > 999)
 dim(d)
 
 names(d)
-d %<>% filter(attachment_count > 0,
-       #!str_detect(organization, "^.\\. |illegible|surname|last name|forename|no name|^unknown$"),
-       !str_detect(title, "illegible|surname|last name|forename|no name") )
-dim(d)
 
-<<<<<<< HEAD
-# apply auto-coding
+
 #FIXME with updated org_names from hand-coding
-=======
-# apply auto-coding
-#FIXME with updated org_names from hand-coding
+
+d %<>% filter(attachment_count > 0,
        !str_detect(organization, "^.\\. |illegible|surname|last name|forename|no name|^unknown$"),
        !str_detect(title, "illegible|surname|last name|forename|no name") )
 dim(d)
@@ -239,7 +221,7 @@ d %<>% mutate(document_id = id)
 # apply auto-coding
 #FIXME with updated org_names from hand-coding
 
->>>>>>> 337b296f99ef0d90f1b128611321f142d60f2a98
+
 source(here::here("code", "org_name.R"))
 
 #FIXME source(here::here("code", "comment_position.R"))

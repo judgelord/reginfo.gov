@@ -7,15 +7,17 @@ source("setup.R")
 
 ## This script downloads pdf attachments only
 ## The advantage of this approach is that it does not require using the API to get file names
-## However, after it is run, one should run regulation-gov-get-attachments.R on the fails to get non-pdfs 
+## However, after it is run, one should run regulation-gov-get-attachments.R on the fails to get non-pdfs
 
 load(here("data", "comment_meta_min.Rdata")) #FIXME check for updates
 
 dim(comment_meta_min)
 names(comment_meta_min)
 
-# urls for first attachments 
-d <- comment_meta_min %>% 
+d <- comment_meta_min
+
+# urls for first attachments
+d %<>%
   mutate(agency_id = str_remove(id, "-.*"),
          year = posted_date %>% str_sub(1,4) %>% as.integer(),
          file = str_c(id, "-1.pdf"),
@@ -45,7 +47,7 @@ nrow(d)
 head(d)
 
 # subset to download now
-docs <- d %>% filter(#org.comment, # comments identified as a org comment 
+docs <- d %>% filter(#org.comment, # comments identified as a org comment
                      !is.na(organization) | number_of_comments_received > 1, # comments with an org name identified
                      attachment_count>0) # subset to those with attachment
 
@@ -56,24 +58,24 @@ docs %>% head() %>% select(file, attach_url)
 
 docs %>%  count(agency_id, sort = T) %>% knitr::kable()
 #################################
-# files we do have 
+# files we do have
 # downloaded <- filter(docs, downloaded)
 
-# inspect 
+# inspect
 # dim(downloaded)
 #head(downloaded)
 #sum(downloaded$number_of_comments_received)
 #write.table(sum(downloaded$number_of_comments_received), file = "data/downloaded.tex")
 
-# to DOWNLOAD 
-# files we don't have 
+# to DOWNLOAD
+# files we don't have
 download <- filter(docs,
                      !downloaded,
-                     !attach_url %in% c("","NULL"), 
+                     !attach_url %in% c("","NULL"),
                      !is.na(attach_url),
                      !is.null(attach_url) )
 
-# inspect 
+# inspect
 dim(docs)
 dim(download)
 download %>% head() %>% select(file, attach_url)
@@ -81,22 +83,22 @@ download %>%  count(agency_id, sort = T) %>% head() %>% knitr::kable()
 
 # download %<>% filter(agency_id %in% c("ATF"))
 dim(download)
-# Load data on failed downloads 
+# Load data on failed downloads
 load("data/comment_fails.Rdata")
 
 # drop files that we have already tried and failed to download
 download %<>% anti_join(fails)
 
-# inspect 
+# inspect
 dim(download)
 head(download$attach_url)
 
 
-download %<>% filter( !is.na(file) ) 
+download %<>% filter( !is.na(file) )
 
-download %<>% filter(!file %in% list.files("comments/") ) 
+download %<>% filter(!file %in% list.files("comments/") )
 
-# inspect 
+# inspect
 dim(download)
 head(download$attach_url)
 
@@ -106,8 +108,8 @@ rm(list("comment_meta_min"))
 # test
 n <- 1
 for(i in 1:n){
-download.file(download$attach_url[i], 
-              destfile = str_c("comments/", download$file[i]) ) 
+download.file(download$attach_url[i],
+              destfile = str_c("comments/", download$file[i]) )
 }
 
 Sys.sleep(400) # wait after downloading the first one so we don't hit the limit on the first loop
@@ -125,19 +127,19 @@ for(i in 1:round(nrow(download)/batch)){
   n <- (i-1)*batch
   # filter out files already downloaded
   download %<>% filter(!file %in% fails$file,
-                       !file %in% list.files("comments/") ) 
-  
+                       !file %in% list.files("comments/") )
+
   ## Reset error counter
   errorcount <<- 0
-  
-  for(i in 1:batch){ 
+
+  for(i in 1:batch){
     message(paste(n+i, "of", N, download$file[i], "at", Sys.time()))
-    
+
     if(errorcount < 50 & nrow(download) > 0){
-      # download to comments folder 
+      # download to comments folder
       tryCatch({ # tryCatch handles errors
-        download.file(download$attach_url[i], 
-                      destfile = paste0("comments/", download$file[i]) ) 
+        download.file(download$attach_url[i],
+                      destfile = paste0("comments/", download$file[i]) )
       },
       error = function(e) {
         errorcount <<- errorcount+1
@@ -149,7 +151,7 @@ for(i in 1:round(nrow(download)/batch)){
         if(str_detect(e, "SSL connect error|500 Internal Server Error")){
           # beepr::beep()
           Sys.sleep(600) # wait 10
-          errorcount <<- 0 # reset error counter 
+          errorcount <<- 0 # reset error counter
         }
       })
 
@@ -160,13 +162,13 @@ for(i in 1:round(nrow(download)/batch)){
       message("--paused after 5 errors")
       # beepr::beep()
       Sys.sleep(600) # wait 10 min
-      errorcount <<- 0 # reset error counter 
+      errorcount <<- 0 # reset error counter
     }
-    
-    } # end loop over batch
-  
 
-  # Save data on failed downloads 
+    } # end loop over batch
+
+
+  # Save data on failed downloads
   save(fails, file = "data/comment_fails.Rdata")
   message("Pausing to prevent regulations.gov from blocking this IP address")
   Sys.sleep(400) # wait 400 seconds (300 is not enough)
