@@ -75,6 +75,8 @@ dtemp <- d
 
 d <- dtemp
 
+
+
 d %<>% distinct()
 
 # duplicates
@@ -83,24 +85,6 @@ d %>%
   filter(n>1) %>%
   group_by(docket_id) %>%
   summarise(n = sum(n)) %>%
-  arrange(-n) %>%
-  kablebox()
-
-
-
-# Import comments from members of congress
-# Congress #TODO import congress? is this not the same sheet? If import-congress pulls this sheet, we can delete this to do item
-# 1HBjG32qWVdf9YxfGPEJhNmSw65Z9XzPhHdDbLnc3mYc
-=======
-
-d %<>% distinct()
-
-# duplicates 
-d %>% 
-  count(document_id, docket_id, sort = T) %>% 
-  filter(n>1) %>% 
-  group_by(docket_id) %>% 
-  summarise(n = sum(n)) %>% 
   arrange(-n)
 
 d %<>% mutate_all(str_squish)
@@ -111,7 +95,7 @@ source("code/import-mass.R")
 d %<>% full_join(mass %>% filter(docket_type == "Rulemaking"))
 
 
-# Import Congress 
+# Import Congress
 # Congress #TODO import congress 1HBjG32qWVdf9YxfGPEJhNmSw65Z9XzPhHdDbLnc3mYc
 source("code/import-congress.R")
 #FIXME join?
@@ -170,10 +154,10 @@ str_remove(s$name,"_.*")
 
 
 # some dups with varitions in docket title
-# inspect 
+# inspect
 d %>% filter(str_dct(coalition_comment, "greyhound")) %>% pull(success)
 
-# some dups with varitions in docket title 
+# some dups with varitions in docket title
 d %<>% ungroup() %>% dplyr::select(-docket_title) %>% distinct()
 
 # class
@@ -195,7 +179,7 @@ d %<>%
   select(-docket_id2)# %>%  mutate(across(starts_with("success")), as.numeric )
 
 
-# FAILED TO IMPORT 
+# FAILED TO IMPORT
 s$name[!s$name %>% str_remove("_.*") %in% d$docket_id]
 
 sum(is.na(d$document_id))
@@ -203,7 +187,7 @@ sum(is.na(d$comment_url))
 
 
 
-# Inspect 
+# Inspect
 d %>% distinct(docket_id, docket_url)  %>% kablebox()
 
 # comments where there is no docket id
@@ -410,12 +394,12 @@ d %>%
   distinct(leader) %>%
   add_count() %>%
   filter(n<2, coalition_comment != FALSE, !leader) %>%
-  filter(org_name == coalition_comment) %>% 
-  mutate(success_mean = mean(success, na.rm = T) )  %>% 
-  distinct(org_name, coalition_comment, success, success_mean, president) %>% 
-  dplyr::select(docket_id, everything()) %>% 
+  filter(org_name == coalition_comment) %>%
+  mutate(success_mean = mean(success, na.rm = T) )  %>%
+  distinct(org_name, coalition_comment, success, success_mean, president) %>%
+  dplyr::select(docket_id, everything()) %>%
   filter(!is.na(success), !success_mean >= 1, !success_mean <= -1 , coalition_comment != "FALSE", !is.na(coalition_comment)) %>%
-  arrange(coalition_comment) %>% 
+  arrange(coalition_comment) %>%
   kablebox()
 
 
