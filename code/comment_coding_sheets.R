@@ -23,6 +23,9 @@ dbListTables(master_con)
 rules <- dbSendQuery(master_con, 'SELECT * FROM rules')
 
 
+# Rdata
+# rules and proposed rules
+
 load(here::here("data", "rules_metadata.Rdata"))
 rules %<>% as_tibble()
 names(rules)
@@ -183,7 +186,6 @@ d %<>% filter(docket_type == "Rulemaking")
 
 dim(d)
 
-}
 
 # selecting agencies for hand codeing
 agencies <- unique(rules$agency_id)
@@ -196,16 +198,19 @@ d %<>% mutate(document_id = id)
 d %<>%
   filter(agency_acronym %in% agencies)
 
-# filter to mass dockets
 d %<>% group_by(docket_id) %>%
   # mass dockets
   mutate(comments_on_docket = as.numeric(number_of_comments_received) %>% sum(),
          max = max(number_of_comments_received) ) %>%
   ungroup() %>%
-  filter(max > 99 | comments_on_docket > 999)
+  # filter to mass dockets
+  # filter(max > 99 | comments_on_docket > 999)
 dim(d)
 
 names(d)
+
+
+# apply auto-coding
 
 
 #FIXME with updated org_names from hand-coding
