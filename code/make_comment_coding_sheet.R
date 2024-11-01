@@ -1,8 +1,29 @@
 source("setup.R")
 
+#TODO write this script so that it just takes a vector of docket ids by replacing docket with dockets in the walk(dockets)
+dockets <- c(
+  "IRS-2024-0026"
+  # "OCC-2023-0017",
+  #   "DOC-2021-0007",
+  # "CDC-2020-0024",
+  # "FTC-2023-0037",
+  # "USDA-2020-0009",
+  # "NPS-2022-0004",
+  # "IRS-2024-0026",
+  # "BSEE-2015-0002",
+  # "EPA-HQ-OW-2022-0901"
+)
+agencies <- str_extract(dockets, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
 
-agency <- "EPA"
-docket <- "EPA-HQ-OAR-2021-0317"
+
+# create directories for each agency
+walk(here::here("data", "datasheets", agencies), dir.create)
+
+for(i in dockets){
+
+docket <- i
+agency <- str_extract(docket, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
+
 
 # LOAD DATA FROM DATA FOLDER
 # comment metadata
@@ -19,11 +40,17 @@ paste(docket, "comment_details.rda", sep = "_")) |>
   str_replace("rulemaking", "regulationsdotgov-data") |>
   load()
 
-comment_details %<>% left_join(comments |> rename(document_subtype = subtype))
+comment_details %<>% left_join(comments) # |> rename(document_subtype = subtype))
 
-d <- comment_details |> group_by(id) |>  mutate(attachment_count = unlist(attachments) |> length()/3)
+d <- comment_details |> group_by(id) |>
+  mutate(attachment_count = unlist(attachments) |> length()/3,
+         attachment_urls = unlist(attachments) |> paste(collapse  = ";", sep = ";") |> str_remove(";.*") ) |>
+  ungroup()
+
+head(d$attachment_urls)
 
 d$attachment_count %>% head()
+
 
 #FIXME with updated org_names from hand-coding
 
@@ -40,7 +67,15 @@ namingthings <- function(x){
   # standardize
 d %<>% namingthings()
 
-d %<>% mutate(organization = title,
+
+
+# if organization is missing use title
+if(!"organization" %in% names(d)){
+  d %<>% mutate(organization = title)
+}
+names(d)
+
+d %<>% mutate(organization = coalesce(organization, title),
               comment_text = comment,
               agency_acronym = agency_id,
               document_id = id)
@@ -188,7 +223,7 @@ d %<>% mutate(number_of_comments_received = duplicate_comments)
 # filter down to org comments
 d %<>%
   group_by(docket_id, org_name) %>%
-  add_count(name = "org_total") %>%
+  add_count(name = "org_unique_comments") %>%
   ungroup() %>%
   arrange(-number_of_comments_received) %>%
   filter(attachment_count > 0,
@@ -199,7 +234,7 @@ d %<>%
          nchar(org_name) > 1) %>%
   mutate(org_name = org_name %>% replace_na("NA") ) %>%
   filter(number_of_comments_received > 9 | !org_name %in% c("NA", "na", "","unknown")) %>%
-  add_count(docket_id, name = "org_comments")
+  add_count(docket_id, name = "org_total_comments")
 
 
 d %>% count(org_name, sort = T)
@@ -211,9 +246,7 @@ d %>%
   #filter(n > 10, n < 20) %>%
   count(docket_id, sort = T) %>% knitr::kable()
 
-d %>% distinct(docket_id, org_comments)%>% knitr::kable()
 
-d %>%  filter(org_comments < 1000)
 
 ## AUGMENT FUNCTION
 # ad document name and link
@@ -236,17 +269,20 @@ d %<>%
          docket_url = str_c("https://www.regulations.gov/docket/",
                             document_id %>% str_remove("-[0-9]*$")))
 
-d$attachment_txt[1]
+d$attachment_txt[1] #TODO
 d$comment_url[1]
 d$docket_url[1]
 
 d %<>% rename(comment_title = title)
 names(d)
 ## PREP SHEETS
-d %<>% select(#agency_acronym,
+d %<>% select(
+  #agency_acronym,
   docket_id,
   docket_url,
   #docket_title,
+  comment_on_document_id,
+  comment_on_id,
   document_id,
   posted_date,
   comment_url,
@@ -255,6 +291,7 @@ d %<>% select(#agency_acronym,
   organization,
   comment_title,
   attachment_count,
+  attachment_urls,
   number_of_comments_received,
   org_name)
 
@@ -262,6 +299,7 @@ d %<>% select(#agency_acronym,
 d %<>% mutate(position = "",
               position_certainty = "",
               comment_type = "",
+              comment_signers = "",
               coalition_comment = "",
               coalition_type = "",
               # org_name = organization, # run scratchpad/orgnames.R until this is a function
@@ -317,3 +355,4 @@ unique(d$docket_id)
 
 walk(unique(d$docket_id), write_comment_sheets)
 
+}
